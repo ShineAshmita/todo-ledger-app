@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ledger — Task Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #121418;
+    --paper-raised: #181b21;
+    --paper-card: #1d2026;
+    --line: #2a2e36;
+    --line-soft: #23262d;
+    --ink: #e8e6df;
+    --ink-dim: #8c8f98;
+    --ink-faint: #5a5d66;
+    --accent: #6fe0c5;
+    --accent-dim: #3f8e7c;
+    --accent-soft: rgba(111, 224, 197, 0.12);
+    --danger: #e88a7d;
+    --radius: 3px;
+    --shadow: 0 1px 0 rgba(255,255,255,0.02) inset, 0 8px 24px rgba(0,0,0,0.35);
+  }
+
+  [data-theme="light"] {
+    --paper: #f0eee6;
+    --paper-raised: #f7f5ee;
+    --paper-card: #ffffff;
+    --line: #d9d5c7;
+    --line-soft: #e5e2d6;
+    --ink: #25241f;
+    --ink-dim: #6e6c62;
+    --ink-faint: #a3a092;
+    --accent: #1d8e72;
+    --accent-dim: #1d8e72;
+    --accent-soft: rgba(29, 142, 114, 0.10);
+    --danger: #b8483a;
+    --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(0,0,0,0.08);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    transition: background 0.35s ease, color 0.35s ease;
+    min-height: 100vh;
+  }
+
+  body {
+    display: flex;
+    justify-content: center;
+    padding: 56px 20px 80px;
+  }
+
+  .sheet {
+    width: 100%;
+    max-width: 640px;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 36px;
+  }
+
+  .masthead h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+
+  .masthead .sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-faint);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .masthead .sub span { color: var(--accent); }
+
+  #theme-toggle {
+    background: var(--paper-card);
+    border: 1px solid var(--line);
+    color: var(--ink-dim);
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: border-color 0.2s, color 0.2s, transform 0.2s;
+    flex-shrink: 0;
+  }
+  #theme-toggle:hover { border-color: var(--accent); color: var(--accent); transform: rotate(15deg); }
+
+  /* Entry row */
+  .entry {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+
+  #task-input {
+    flex: 1;
+    background: var(--paper-card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--ink);
+    padding: 14px 16px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14.5px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  #task-input::placeholder { color: var(--ink-faint); }
+  #task-input:focus { border-color: var(--accent-dim); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  #add-btn {
+    background: var(--accent);
+    color: #0d1310;
+    border: none;
+    border-radius: var(--radius);
+    padding: 0 22px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.1s;
+    white-space: nowrap;
+  }
+  #add-btn:hover { filter: brightness(1.08); }
+  #add-btn:active { transform: scale(0.97); }
+
+  /* Filter tabs - styled like ledger index tabs */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .tab {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-bottom: none;
+    color: var(--ink-faint);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    padding: 9px 16px 11px;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+    text-transform: uppercase;
+  }
+
+  .tab .count {
+    color: var(--ink-faint);
+    margin-left: 5px;
+  }
+
+  .tab:hover { color: var(--ink-dim); }
+
+  .tab.active {
+    background: var(--paper-card);
+    color: var(--accent);
+    border-color: var(--line);
+  }
+  .tab.active .count { color: var(--accent); }
+
+  /* List card */
+  .ledger {
+    background: var(--paper-card);
+    border: 1px solid var(--line);
+    border-radius: 0 8px 8px 8px;
+    box-shadow: var(--shadow);
+    min-height: 180px;
+  }
+
+  #task-list {
+    list-style: none;
+    margin: 0;
+    padding: 4px 0;
+  }
+
+  .task {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line-soft);
+    position: relative;
+  }
+  .task:last-child { border-bottom: none; }
+
+  .check {
+    width: 19px;
+    height: 19px;
+    flex-shrink: 0;
+    border: 1.5px solid var(--ink-faint);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .check:hover { border-color: var(--accent); }
+  .check svg { width: 11px; height: 11px; opacity: 0; transform: scale(0.5); transition: opacity 0.15s, transform 0.15s; }
+
+  .task.done .check { background: var(--accent); border-color: var(--accent); }
+  .task.done .check svg { opacity: 1; transform: scale(1); }
+
+  .task-text {
+    flex: 1;
+    font-size: 14.5px;
+    line-height: 1.4;
+    cursor: text;
+    outline: none;
+    word-break: break-word;
+  }
+
+  .task.done .task-text {
+    color: var(--ink-faint);
+    text-decoration: line-through;
+    text-decoration-color: var(--ink-faint);
+  }
+
+  .task-text[contenteditable="true"] {
+    background: var(--accent-soft);
+    border-radius: 2px;
+    padding: 2px 4px;
+    margin: -2px -4px;
+  }
+
+  .task-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    flex-shrink: 0;
+    width: 52px;
+    text-align: right;
+  }
+
+  .delete-btn {
+    background: none;
+    border: none;
+    color: var(--ink-faint);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 4px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+  }
+  .task:hover .delete-btn { opacity: 1; }
+  .delete-btn:hover { color: var(--danger); }
+
+  .empty-state {
+    padding: 56px 20px;
+    text-align: center;
+    color: var(--ink-faint);
+  }
+  .empty-state .glyph {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 28px;
+    color: var(--ink-faint);
+    margin-bottom: 10px;
+    display: block;
+  }
+  .empty-state p { margin: 0; font-size: 13.5px; }
+
+  /* Footer */
+  .ledger-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 18px;
+    border-top: 1px solid var(--line-soft);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    color: var(--ink-faint);
+  }
+
+  #clear-completed {
+    background: none;
+    border: none;
+    color: var(--ink-faint);
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    text-decoration: underline;
+    text-decoration-color: var(--line);
+    transition: color 0.15s;
+  }
+  #clear-completed:hover { color: var(--danger); }
+  #clear-completed:disabled { opacity: 0; pointer-events: none; }
+
+  /* Task enter animation */
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .task.new { animation: slideIn 0.25s ease; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+
+  @media (max-width: 480px) {
+    .masthead h1 { font-size: 26px; }
+    .entry { flex-direction: column; }
+    #add-btn { padding: 13px; }
+  }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <header>
+    <div class="masthead">
+      <h1>Ledger</h1>
+      <div class="sub">today's entries · <span id="date-stamp"></span></div>
+    </div>
+    <button id="theme-toggle" aria-label="Toggle light and dark theme" title="Toggle theme">◐</button>
+  </header>
+
+  <div class="entry">
+    <input type="text" id="task-input" placeholder="What needs doing?" maxlength="200" autocomplete="off">
+    <button id="add-btn">Add entry</button>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-filter="all" role="tab">All <span class="count" id="count-all">0</span></button>
+    <button class="tab" data-filter="active" role="tab">Active <span class="count" id="count-active">0</span></button>
+    <button class="tab" data-filter="completed" role="tab">Completed <span class="count" id="count-completed">0</span></button>
+  </div>
+
+  <div class="ledger">
+    <ul id="task-list"></ul>
+    <div class="ledger-footer">
+      <span id="status-line">0 items</span>
+      <button id="clear-completed" disabled>Clear completed</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const STORAGE_KEY = 'ledger.tasks.v1';
+  const THEME_KEY = 'ledger.theme.v1';
+
+  /** @type {{id:string, text:string, done:boolean, created:number}[]} */
+  let tasks = [];
+  let currentFilter = 'all';
+
+  const taskInput = document.getElementById('task-input');
+  const addBtn = document.getElementById('add-btn');
+  const taskList = document.getElementById('task-list');
+  const tabs = document.querySelectorAll('.tab');
+  const clearBtn = document.getElementById('clear-completed');
+  const statusLine = document.getElementById('status-line');
+  const themeToggle = document.getElementById('theme-toggle');
+  const dateStamp = document.getElementById('date-stamp');
+
+  // ---------- Persistence ----------
+  function loadTasks() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      tasks = raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      console.error('Could not read saved tasks, starting fresh.', e);
+      tasks = [];
+    }
+  }
+
+  function saveTasks() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    } catch (e) {
+      console.error('Could not save tasks.', e);
+    }
+  }
+
+  function loadTheme() {
+    const saved = localStorage.getItem(THEME_KEY);
+    const theme = saved || 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+    themeToggle.textContent = theme === 'dark' ? '◐' : '◑';
+  }
+
+  function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    themeToggle.textContent = next === 'dark' ? '◐' : '◑';
+    localStorage.setItem(THEME_KEY, next);
+  }
+
+  // ---------- Helpers ----------
+  function uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  function formatTime(ts) {
+    const d = new Date(ts);
+    let h = d.getHours();
+    const m = d.getMinutes().toString().padStart(2, '0');
+    const ap = h >= 12 ? 'pm' : 'am';
+    h = h % 12 || 12;
+    return `${h}:${m}${ap}`;
+  }
+
+  function getFiltered() {
+    if (currentFilter === 'active') return tasks.filter(t => !t.done);
+    if (currentFilter === 'completed') return tasks.filter(t => t.done);
+    return tasks;
+  }
+
+  // ---------- Rendering ----------
+  function render() {
+    taskList.innerHTML = '';
+
+    const filtered = getFiltered();
+
+    if (filtered.length === 0) {
+      const empty = document.createElement('li');
+      empty.className = 'empty-state';
+      const messages = {
+        all: ['—', 'Nothing logged yet. Add your first entry above.'],
+        active: ['✓', 'All clear. No active tasks remain.'],
+        completed: ['○', 'Nothing completed yet.']
+      };
+      const [glyph, text] = messages[currentFilter];
+      empty.innerHTML = `<span class="glyph">${glyph}</span><p>${text}</p>`;
+      taskList.appendChild(empty);
+    } else {
+      const frag = document.createDocumentFragment();
+      filtered.forEach(task => frag.appendChild(buildTaskNode(task)));
+      taskList.appendChild(frag);
+    }
+
+    updateCounts();
+    updateStatusLine();
+  }
+
+  function buildTaskNode(task) {
+    const li = document.createElement('li');
+    li.className = 'task' + (task.done ? ' done' : '');
+    li.dataset.id = task.id;
+
+    const check = document.createElement('button');
+    check.className = 'check';
+    check.setAttribute('aria-label', task.done ? 'Mark as active' : 'Mark as complete');
+    check.innerHTML = '<svg viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="#0d1310" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+    const text = document.createElement('span');
+    text.className = 'task-text';
+    text.textContent = task.text;
+    text.setAttribute('tabindex', '0');
+
+    const meta = document.createElement('span');
+    meta.className = 'task-meta';
+    meta.textContent = formatTime(task.created);
+
+    const del = document.createElement('button');
+    del.className = 'delete-btn';
+    del.setAttribute('aria-label', 'Delete task');
+    del.textContent = '✕';
+
+    li.append(check, text, meta, del);
+    return li;
+  }
+
+  function updateCounts() {
+    document.getElementById('count-all').textContent = tasks.length;
+    document.getElementById('count-active').textContent = tasks.filter(t => !t.done).length;
+    document.getElementById('count-completed').textContent = tasks.filter(t => t.done).length;
+  }
+
+  function updateStatusLine() {
+    const activeCount = tasks.filter(t => !t.done).length;
+    const completedCount = tasks.filter(t => t.done).length;
+    statusLine.textContent = tasks.length === 0
+      ? '0 items'
+      : `${activeCount} active · ${completedCount} done`;
+    clearBtn.disabled = completedCount === 0;
+  }
+
+  // ---------- CRUD ----------
+  function addTask(text) {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    tasks.unshift({ id: uid(), text: trimmed, done: false, created: Date.now() });
+    saveTasks();
+    render();
+    const node = taskList.querySelector(`[data-id="${tasks[0].id}"]`);
+    if (node) node.classList.add('new');
+    taskInput.value = '';
+    taskInput.focus();
+  }
+
+  function toggleTask(id) {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    task.done = !task.done;
+    saveTasks();
+    render();
+  }
+
+  function deleteTask(id) {
+    tasks = tasks.filter(t => t.id !== id);
+    saveTasks();
+    render();
+  }
+
+  function editTask(id, newText) {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    const trimmed = newText.trim();
+    if (!trimmed) {
+      deleteTask(id);
+      return;
+    }
+    task.text = trimmed;
+    saveTasks();
+  }
+
+  function clearCompleted() {
+    tasks = tasks.filter(t => !t.done);
+    saveTasks();
+    render();
+  }
+
+  // ---------- Event wiring (delegated where it matters) ----------
+  addBtn.addEventListener('click', () => addTask(taskInput.value));
+  taskInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') addTask(taskInput.value);
+  });
+
+  // Delegated listener on the list — handles check / delete / edit for all items,
+  // including ones created dynamically after this listener was attached.
+  taskList.addEventListener('click', e => {
+    const li = e.target.closest('.task');
+    if (!li) return;
+    const id = li.dataset.id;
+
+    if (e.target.closest('.check')) {
+      toggleTask(id);
+    } else if (e.target.closest('.delete-btn')) {
+      li.style.opacity = '0';
+      setTimeout(() => deleteTask(id), 120);
+    }
+  });
+
+  taskList.addEventListener('dblclick', e => {
+    const text = e.target.closest('.task-text');
+    if (!text) return;
+    text.setAttribute('contenteditable', 'true');
+    text.focus();
+    document.getSelection().selectAllChildren(text);
+  });
+
+  taskList.addEventListener('blur', e => {
+    const text = e.target.closest('.task-text');
+    if (!text || text.getAttribute('contenteditable') !== 'true') return;
+    const li = text.closest('.task');
+    text.removeAttribute('contenteditable');
+    editTask(li.dataset.id, text.textContent);
+    render();
+  }, true);
+
+  taskList.addEventListener('keydown', e => {
+    const text = e.target.closest('.task-text');
+    if (!text || text.getAttribute('contenteditable') !== 'true') return;
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      text.blur();
+    } else if (e.key === 'Escape') {
+      const li = text.closest('.task');
+      const task = tasks.find(t => t.id === li.dataset.id);
+      text.textContent = task.text;
+      text.removeAttribute('contenteditable');
+      text.blur();
+    }
+  });
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentFilter = tab.dataset.filter;
+      render();
+    });
+  });
+
+  clearBtn.addEventListener('click', clearCompleted);
+  themeToggle.addEventListener('click', toggleTheme);
+
+  // ---------- Init ----------
+  loadTheme();
+  loadTasks();
+  render();
+  dateStamp.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+})();
+</script>
+
+</body>
+</html>
